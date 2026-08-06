@@ -41,10 +41,46 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
-    <!-- Parse the uploaded gargantua.ai/v1 manifest (YAML) into a JsonNode. -->
+    <!-- Durable persistence behind the ports: plain JDBC over an embedded H2 by
+         default, swappable to Postgres via the `postgres` profile. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- Activated only under the `postgres` profile. -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Parse the uploaded gargantua.ai/v1 manifest (YAML) into a JsonNode, and
+         serialize aggregates to the document store. Jackson 2 (com.fasterxml):
+         stable and already used by ManifestReader — Spring Boot 4 uses Jackson 3
+         (tools.jackson) for HTTP, but we keep persistence on Jackson 2. -->
     <dependency>
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-yaml</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
+
+    <!-- S3-compatible blob backend, activated only under the `minio` profile.
+         Present at compile time so S3BlobStore builds; used at runtime only when
+         the profile is active. -->
+    <dependency>
+      <groupId>io.minio</groupId>
+      <artifactId>minio</artifactId>
+      <!-- 8.5.x pulls okhttp 4.x (a plain JVM jar); minio 9's okhttp 5 is a
+           Kotlin-multiplatform artifact whose JVM classes Maven can't resolve. -->
+      <version>8.5.17</version>
     </dependency>
 
     <dependency>

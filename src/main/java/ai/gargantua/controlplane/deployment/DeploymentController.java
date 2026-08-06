@@ -3,6 +3,7 @@ package ai.gargantua.controlplane.deployment;
 import ai.gargantua.controlplane.deployment.model.Deployment;
 import ai.gargantua.controlplane.deployment.model.DeploymentRequest;
 import ai.gargantua.controlplane.deployment.model.DeploymentStateRequest;
+import ai.gargantua.controlplane.registry.model.Environment;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,8 +38,12 @@ public class DeploymentController {
     }
 
     @GetMapping
-    public List<Deployment> list() {
-        return deploymentService.list();
+    public List<Deployment> list(
+            @RequestParam(name = "environment", required = false) Environment environment,
+            @RequestParam(name = "bundle", required = false) String bundle) {
+        return environment == null && bundle == null
+                ? deploymentService.list()
+                : deploymentService.list(environment, bundle);
     }
 
     @GetMapping("/{id}")

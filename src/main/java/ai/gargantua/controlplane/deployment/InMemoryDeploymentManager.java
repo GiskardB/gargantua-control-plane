@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
-/** In-memory {@link DeploymentManager} for the MVP, keyed by deployment id. */
-@Repository
+/**
+ * In-memory {@link DeploymentManager}, keyed by deployment id. No longer a Spring
+ * bean — {@link JdbcDeploymentManager} is the durable default. Kept as a test double.
+ */
 public class InMemoryDeploymentManager implements DeploymentManager {
 
     private final Map<String, Deployment> byId = new ConcurrentHashMap<>();

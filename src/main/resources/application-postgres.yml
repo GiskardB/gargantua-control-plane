@@ -1,0 +1,13 @@
+# Activate with: --spring.profiles.active=postgres  (or SPRING_PROFILES_ACTIVE=postgres)
+# Points the same JDBC document store at Postgres instead of the embedded H2 — no
+# code change, the schema.sql (VARCHAR-based) applies unchanged. Defaults target
+# Cave's `postgres` service; override via env vars for other environments.
+spring:
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:postgres}:${POSTGRES_PORT:5432}/${POSTGRES_DB:gargantua}
+    username: ${POSTGRES_USER:gargantua}
+    password: ${POSTGRES_PASSWORD:gargantua}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always

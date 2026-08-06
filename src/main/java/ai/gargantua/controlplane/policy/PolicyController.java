@@ -1,6 +1,8 @@
 package ai.gargantua.controlplane.policy;
 
 import ai.gargantua.controlplane.policy.model.Policy;
+import ai.gargantua.controlplane.policy.model.PolicyDecision;
+import ai.gargantua.controlplane.policy.model.PolicyEvaluationRequest;
 import ai.gargantua.controlplane.policy.model.PolicyRequest;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -41,9 +44,20 @@ public class PolicyController {
         return policyService.get(id);
     }
 
+    @PutMapping("/{id}")
+    public Policy update(@PathVariable String id, @Valid @RequestBody PolicyRequest request) {
+        return policyService.update(id, request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String id) {
         policyService.delete(id);
+    }
+
+    /** Decide a target against the stored policies (deny overrides; no match = allow). */
+    @PostMapping("/evaluate")
+    public PolicyDecision evaluate(@Valid @RequestBody PolicyEvaluationRequest request) {
+        return policyService.evaluate(request.target());
     }
 }

@@ -1,0 +1,15 @@
+# Test profile: exercise the real JDBC persistence path, but against an ephemeral
+# in-memory H2 and a throwaway blob dir so tests neither need infra nor touch ./data.
+spring:
+  datasource:
+    url: jdbc:h2:mem:controlplane;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+
+gargantua:
+  storage:
+    blob-dir: ./target/test-blobs

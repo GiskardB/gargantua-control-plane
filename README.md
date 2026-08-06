@@ -106,25 +106,39 @@ Control Plane non lo tocca mai.
 ```
 ai.gargantua.controlplane
 ├── domain/       WorkloadKind, Capability, BundleDescriptor
-├── registry/     Registry (port) + InMemory, RegistryService, ManifestReader
-├── catalog/      Catalog (port) + InMemory, CatalogService
-├── policy/       PolicyManager (port) + InMemory, PolicyService
-├── deployment/   DeploymentManager (port) + InMemory, DeploymentService
-├── storage/      BlobStore (port) + FilesystemBlobStore
-└── common/       gestione errori uniforme (ApiError), Clock, RootController
+├── registry/     Registry (port) + Jdbc/InMemory, RegistryService, ManifestReader
+├── catalog/      Catalog (port) + Jdbc/InMemory, CatalogService
+├── policy/       PolicyManager (port) + Jdbc/InMemory, PolicyService (+ evaluate)
+├── deployment/   DeploymentManager (port) + Jdbc/InMemory, DeploymentService
+├── storage/      BlobStore (Filesystem | S3) + DocumentStore (JdbcDocumentStore)
+└── common/       gestione errori uniforme (ApiError), Clock, ObjectMapper, RootController
 ```
 
-Ogni sotto-sistema è dietro un **port** (ADR-004): l'MVP usa backend in-memory
-(e filesystem per i byte del manifest), sostituibili senza cambiare i chiamanti.
+Ogni sotto-sistema è dietro un **port** (ADR-004). La persistenza è **durevole**:
+lo stato (registry, catalog, policy, deployment) vive in un piccolo *document store*
+JDBC (aggregati serializzati in JSON, tabella `cp_document`), i byte dei manifest nel
+`BlobStore`. I backend si scelgono per profilo senza toccare i chiamanti:
+
+| Cosa | Default (zero-infra) | Profilo `postgres` / `minio` |
+|---|---|---|
+| Stato (document store) | **H2 embedded** su file (`./data/db`) | **Postgres** (stesso schema) |
+| Manifest (blob) | **Filesystem** (`./data/blobs`) | **MinIO / S3** |
+| `InMemory*` | — (test double per gli unit test) | — |
 
 ## 6. Build ed esecuzione
 
 ```bash
-mvn test            # 11 test: smoke di contesto, RegistryService, API end-to-end
-mvn spring-boot:run # avvia su http://localhost:8080  (override: --server.port=NNNN)
+mvn test            # 18 test: context, RegistryService, PolicyService, API end-to-end (H2)
+mvn spring-boot:run # avvia su http://localhost:8080 (durevole su ./data), override --server.port=NNNN
+
+# Backend di Cave, attivabili senza modifiche al codice:
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres        # stato → Postgres
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres,minio  # stato → Postgres, blob → MinIO
 ```
 
 `GET /` restituisce l'indice dei sotto-sistemi; `GET /actuator/health` la salute.
+La persistenza è verificata end-to-end: pubblicando dati, riavviando il processo e
+ritrovandoli (bundle, promozioni, capability, policy) sopravvivono al restart.
 
 ## 7. API (v1)
 
@@ -140,17 +154,18 @@ mvn spring-boot:run # avvia su http://localhost:8080  (override: --server.port=N
 | `GET /api/v1/catalog/capabilities/{name}` | Una capability e i suoi provider. |
 | `POST /api/v1/catalog/agents` | Registrazione A2A di un agente attivo (endpoint + capability servite). |
 | `GET /api/v1/catalog/agents[?capability=…]` | Agenti registrati, filtrabili per capability. |
-| `POST /api/v1/policies` · `GET` · `GET /{id}` · `DELETE /{id}` | CRUD delle policy di governance (stub: definizione, non enforcement). |
+| `POST /api/v1/policies` · `GET` · `GET /{id}` · `PUT /{id}` · `DELETE /{id}` | CRUD delle policy di governance. |
+| `POST /api/v1/policies/evaluate` | Decide un target contro le policy: `{target}` → `{decision, matched}`. Match esatto o per prefisso (`target:*`); **deny overrides**; nessun match = ALLOW. Definizione, non enforcement (ADR-004). |
 | `POST /api/v1/deployments` | Registra un deployment desiderato (valida che il bundle esista → `404` se no); stato iniziale `PENDING`. |
-| `GET /api/v1/deployments` · `GET /{id}` · `PUT /{id}/state` | Elenco, dettaglio e aggiornamento dello stato osservato. |
+| `GET /api/v1/deployments[?environment=…&bundle=…]` · `GET /{id}` · `PUT /{id}/state` | Elenco (filtrabile per ambiente/bundle), dettaglio e aggiornamento dello stato osservato. |
 
 Gli errori usano un corpo uniforme `ApiError` (`status`, `error`, `message`,
 `path`, `timestamp`).
 
 ## 8. Cosa resta (post-MVP)
 
-Registry/Catalog sono ragionevolmente completi; Policy e Deployment sono stub
-volutamente minimi. In ordine indicativo: persistenza durevole (Postgres/MinIO
-dietro i port esistenti), firma digitale dei bundle, enforcement/valutazione
-delle policy ai punti di applicazione, orchestrazione reale del rollout
-(rolling/canary) nel Deployment Manager, health e SLA nel Catalog.
+Registry, Catalog, Policy e Deployment sono funzionali e persistenti. In ordine
+indicativo restano: verifica dei profili `postgres`/`minio` contro i servizi reali
+di Cave (oggi spenti), firma digitale dei bundle, enforcement delle policy ai punti
+di applicazione (Runtime/Gateway), orchestrazione reale del rollout (rolling/canary)
+nel Deployment Manager, health e SLA nel Catalog.

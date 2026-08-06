@@ -2,12 +2,23 @@ spring:
   application:
     name: gargantua-control-plane
 
+  # Durable by default with zero infrastructure: an embedded H2 in file mode.
+  # Activate the `postgres` profile to point the same JDBC document store at
+  # Cave's Postgres instead (see application-postgres.yml).
+  datasource:
+    url: jdbc:h2:file:./data/db/controlplane;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always   # runs schema.sql (CREATE TABLE IF NOT EXISTS) on every boot
+
 server:
   port: 8080
 
-# Control Plane MVP settings. Persistence is in-memory except the bundle blobs,
-# which the filesystem BlobStore writes here. Swap these for Postgres/MinIO later
-# without touching callers (the ports stay the same).
+# Bundle manifest bytes are written by the filesystem BlobStore here; the rest of
+# the state lives in the datasource above. Both are swappable behind their ports.
 gargantua:
   storage:
     blob-dir: ./data/blobs

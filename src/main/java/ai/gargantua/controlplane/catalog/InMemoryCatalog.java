@@ -9,14 +9,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
 /**
- * In-memory {@link Catalog} for the MVP. Two concurrent maps: capability name →
- * entry, and agent name → registration. Registrations are upserts so an agent that
- * re-announces simply refreshes its record.
+ * In-memory {@link Catalog}: two concurrent maps (capability name → entry, agent
+ * name → registration), registrations upserted. No longer a Spring bean —
+ * {@link JdbcCatalog} is the durable default. Kept as a test double for unit tests.
  */
-@Repository
 public class InMemoryCatalog implements Catalog {
 
     private final Map<String, Capability> capabilities = new ConcurrentHashMap<>();

@@ -5,14 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
 /**
- * In-memory {@link Registry} for the MVP. Keyed by {@code name@version}; thread-safe
- * via a concurrent map so it survives concurrent publishes within one node. State is
- * lost on restart — deliberately, until a durable backend replaces it.
+ * In-memory {@link Registry}, keyed by {@code name@version}; thread-safe via a
+ * concurrent map. No longer a Spring bean — {@link JdbcRegistry} is the durable
+ * default. Kept as a lightweight test double for unit tests that exercise
+ * {@code RegistryService} without booting a datasource.
  */
-@Repository
 public class InMemoryRegistry implements Registry {
 
     private final Map<String, BundleArtifact> byCoordinate = new ConcurrentHashMap<>();

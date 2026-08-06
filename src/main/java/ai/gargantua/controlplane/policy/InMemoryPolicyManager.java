@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Repository;
 
-/** In-memory {@link PolicyManager} for the MVP, keyed by policy id. */
-@Repository
+/**
+ * In-memory {@link PolicyManager}, keyed by policy id. No longer a Spring bean —
+ * {@link JdbcPolicyManager} is the durable default. Kept as a unit-test double.
+ */
 public class InMemoryPolicyManager implements PolicyManager {
 
     private final Map<String, Policy> byId = new ConcurrentHashMap<>();

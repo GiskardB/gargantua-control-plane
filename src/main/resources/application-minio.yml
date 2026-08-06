@@ -1,0 +1,11 @@
+# Activate with: --spring.profiles.active=minio  (combinable with postgres:
+#   --spring.profiles.active=postgres,minio)
+# Swaps the filesystem BlobStore for the S3-compatible S3BlobStore. Defaults target
+# Cave's `minio` service; override via env vars elsewhere.
+gargantua:
+  storage:
+    s3:
+      endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: ${MINIO_BUCKET:gargantua-bundles}

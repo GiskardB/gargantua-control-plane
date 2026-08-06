@@ -97,4 +97,24 @@ class ControlPlaneApiTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].name").value("translator-instance-1"));
     }
+
+    @Test
+    void createPolicyThenEvaluateTargetDenies() throws Exception {
+        String policy = json.writeValueAsString(Map.of(
+                "name", "no-shell",
+                "target", "tool:shell",
+                "effect", "DENY"));
+        mvc.perform(post("/api/v1/policies")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(policy))
+                .andExpect(status().isCreated());
+
+        String eval = json.writeValueAsString(Map.of("target", "tool:shell"));
+        mvc.perform(post("/api/v1/policies/evaluate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(eval))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.decision").value("DENY"))
+                .andExpect(jsonPath("$.matched", hasSize(1)));
+    }
 }

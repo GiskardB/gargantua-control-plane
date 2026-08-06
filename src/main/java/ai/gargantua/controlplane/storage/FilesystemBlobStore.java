@@ -6,14 +6,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Filesystem-backed {@link BlobStore}. Writes each blob as a file under a
- * configured root directory; the key becomes a relative path. Suitable for the
- * single-node MVP and for tests that point it at a temp dir.
+ * Filesystem-backed {@link BlobStore} — the durable default. Writes each blob as a
+ * file under a configured root directory; the key becomes a relative path. Suitable
+ * for the single-node deployment and for tests that point it at a temp dir. The
+ * {@code minio} profile replaces it with {@link S3BlobStore}.
  */
 @Component
+@Profile("!minio")
 public class FilesystemBlobStore implements BlobStore {
 
     private final Path root;
