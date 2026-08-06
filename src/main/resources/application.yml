@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: gargantua-control-plane
+
+server:
+  port: 8080
+
+# Control Plane MVP settings. Persistence is in-memory except the bundle blobs,
+# which the filesystem BlobStore writes here. Swap these for Postgres/MinIO later
+# without touching callers (the ports stay the same).
+gargantua:
+  storage:
+    blob-dir: ./data/blobs
+
+# Expose health/info so the platform can readiness-check the Control Plane.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

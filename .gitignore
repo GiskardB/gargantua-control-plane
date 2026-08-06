@@ -1,0 +1,10 @@
+target/
+*.class
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+.idea/
+*.iml
+.vscode/
+# local blob storage for the filesystem BlobStore
+/data/

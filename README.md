@@ -4,8 +4,9 @@ Control Plane della piattaforma **Gargantua AI Operating System**. Gestisce lo
 stato *desiderato* della piattaforma — cosa deve esistere, chi può fare cosa,
 cosa è disponibile — e lo espone a tutti gli altri componenti.
 
-> Repository non ancora avviato al livello di implementazione. Questo documento
-> ne fissa lo scope prima di scrivere la prima riga di codice.
+> **Stato: MVP funzionante.** I quattro sotto-sistemi esistono e rispondono via
+> HTTP; la persistenza è in-memory più filesystem per i bundle, dietro *port* così
+> da poter passare a Postgres/MinIO senza toccare i chiamanti. Vedi §5–§7.
 
 ---
 
@@ -89,8 +90,63 @@ Control Plane non lo tocca mai.
 | [`gargantua-gateway`](../gargantua-gateway) | Interroga il Catalog per il routing per-capability; non conosce staticamente gli agenti. |
 | [`gargantua-operator`](../gargantua-operator) | Fase 5. Traduce lo stato del Control Plane in risorse Kubernetes (CRD) e ne applica la riconciliazione. |
 
-## 5. Stato
+## 5. Stack e struttura
 
-Non avviato. Da fare, in ordine indicativo: modello dati Registry/Catalog,
-API di pubblicazione bundle, API di discovery A2A lato Catalog, RBAC nel
-Policy Manager, orchestrazione rollout nel Deployment Manager.
+- **Java 17 + Spring Boot 3.3.5** (web, validation, actuator, Jackson YAML).
+- Self-contained: i tipi di dominio (`WorkloadKind`, `Capability`,
+  `BundleDescriptor`) sono un mirror locale di quelli di `agent-core`, non una
+  dipendenza — `agent-core` compila per Java 21 mentre qui restiamo su Java 17.
+  Il contratto condiviso è il *domain model doc*, non un jar. Stessa scelta fatta
+  per i tipi TypeScript di `gargantua-studio`.
+
+```
+ai.gargantua.controlplane
+├── domain/       WorkloadKind, Capability, BundleDescriptor
+├── registry/     Registry (port) + InMemory, RegistryService, ManifestReader
+├── catalog/      Catalog (port) + InMemory, CatalogService
+├── policy/       PolicyManager (port) + InMemory, PolicyService
+├── deployment/   DeploymentManager (port) + InMemory, DeploymentService
+├── storage/      BlobStore (port) + FilesystemBlobStore
+└── common/       gestione errori uniforme (ApiError), Clock, RootController
+```
+
+Ogni sotto-sistema è dietro un **port** (ADR-004): l'MVP usa backend in-memory
+(e filesystem per i byte del manifest), sostituibili senza cambiare i chiamanti.
+
+## 6. Build ed esecuzione
+
+```bash
+mvn test            # 11 test: smoke di contesto, RegistryService, API end-to-end
+mvn spring-boot:run # avvia su http://localhost:8080  (override: --server.port=NNNN)
+```
+
+`GET /` restituisce l'indice dei sotto-sistemi; `GET /actuator/health` la salute.
+
+## 7. API (v1)
+
+| Metodo & path | Cosa fa |
+|---|---|
+| `POST /api/v1/registry/bundles` | Pubblica un bundle dal manifest `gargantua.ai/v1` (YAML/JSON). Valida shape e invarianti, calcola il checksum SHA-256, indicizza le capability nel Catalog. Versioni immutabili → `409` se già presente. |
+| `GET /api/v1/registry/bundles` | Elenca tutti i bundle pubblicati. |
+| `GET /api/v1/registry/bundles/{name}/versions` | Versioni di un bundle. |
+| `GET /api/v1/registry/bundles/{name}/{version}` | Un artefatto specifico. |
+| `GET /api/v1/registry/bundles/{name}/{version}/manifest` | I byte del manifest originale. |
+| `POST /api/v1/registry/bundles/{name}/{version}/promote` | Promuove una versione a un ambiente (`DEV`/`STAGING`/`PRODUCTION`). |
+| `GET /api/v1/catalog/capabilities` | Capability pubblicate e chi le fornisce. |
+| `GET /api/v1/catalog/capabilities/{name}` | Una capability e i suoi provider. |
+| `POST /api/v1/catalog/agents` | Registrazione A2A di un agente attivo (endpoint + capability servite). |
+| `GET /api/v1/catalog/agents[?capability=…]` | Agenti registrati, filtrabili per capability. |
+| `POST /api/v1/policies` · `GET` · `GET /{id}` · `DELETE /{id}` | CRUD delle policy di governance (stub: definizione, non enforcement). |
+| `POST /api/v1/deployments` | Registra un deployment desiderato (valida che il bundle esista → `404` se no); stato iniziale `PENDING`. |
+| `GET /api/v1/deployments` · `GET /{id}` · `PUT /{id}/state` | Elenco, dettaglio e aggiornamento dello stato osservato. |
+
+Gli errori usano un corpo uniforme `ApiError` (`status`, `error`, `message`,
+`path`, `timestamp`).
+
+## 8. Cosa resta (post-MVP)
+
+Registry/Catalog sono ragionevolmente completi; Policy e Deployment sono stub
+volutamente minimi. In ordine indicativo: persistenza durevole (Postgres/MinIO
+dietro i port esistenti), firma digitale dei bundle, enforcement/valutazione
+delle policy ai punti di applicazione, orchestrazione reale del rollout
+(rolling/canary) nel Deployment Manager, health e SLA nel Catalog.
