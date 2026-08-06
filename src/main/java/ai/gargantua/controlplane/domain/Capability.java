@@ -7,8 +7,9 @@ import java.util.List;
  * object in the Gargantua domain model: it is the currency the Catalog indexes so
  * that agents can discover each other by what they do, not by where they live.
  *
- * <p>Kept as a local record rather than an agent-core dependency (agent-core targets
- * Java 21; this service runs on Java 17). The contract is the domain model doc.
+ * <p>Kept as a local record rather than an agent-core dependency, to keep this
+ * service's build decoupled from the Runtime's release cadence. The contract is the
+ * domain model doc.
  *
  * @param name         stable identifier, e.g. {@code summarize-document}
  * @param description  human-readable statement of what it does

@@ -92,12 +92,16 @@ Control Plane non lo tocca mai.
 
 ## 5. Stack e struttura
 
-- **Java 17 + Spring Boot 3.3.5** (web, validation, actuator, Jackson YAML).
+- **Java 25 (LTS) + Spring Boot 4.1** (web, validation, actuator, Jackson YAML).
+  Ultima LTS per sfruttare al meglio GC (Generational ZGC) e gestione memoria —
+  performance e memoria sono un requisito di piattaforma, non un dettaglio.
 - Self-contained: i tipi di dominio (`WorkloadKind`, `Capability`,
   `BundleDescriptor`) sono un mirror locale di quelli di `agent-core`, non una
-  dipendenza — `agent-core` compila per Java 21 mentre qui restiamo su Java 17.
-  Il contratto condiviso è il *domain model doc*, non un jar. Stessa scelta fatta
-  per i tipi TypeScript di `gargantua-studio`.
+  dipendenza — per tenere la build del Control Plane disaccoppiata dalla release
+  cadence del Runtime. Il contratto condiviso è il *domain model doc*, non un jar.
+  Stessa scelta fatta per i tipi TypeScript di `gargantua-studio`. (Ora entrambi
+  girano su Java 25: se un domani il coupling conviene, si può adottare
+  `agent-core` direttamente.)
 
 ```
 ai.gargantua.controlplane
