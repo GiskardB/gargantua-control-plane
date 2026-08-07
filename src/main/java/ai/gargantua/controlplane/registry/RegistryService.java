@@ -3,9 +3,9 @@ package ai.gargantua.controlplane.registry;
 import ai.gargantua.controlplane.catalog.CatalogService;
 import ai.gargantua.controlplane.common.ConflictException;
 import ai.gargantua.controlplane.common.NotFoundException;
-import ai.gargantua.controlplane.domain.BundleDescriptor;
 import ai.gargantua.controlplane.registry.model.BundleArtifact;
 import ai.gargantua.controlplane.registry.model.Environment;
+import ai.gargantua.controlplane.registry.model.PublishedBundle;
 import ai.gargantua.controlplane.storage.BlobStore;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
@@ -44,7 +44,7 @@ public class RegistryService {
      * existing {@code name@version} is a conflict, not an overwrite.
      */
     public BundleArtifact publish(String manifest) {
-        BundleDescriptor descriptor = manifestReader.read(manifest);
+        PublishedBundle descriptor = manifestReader.read(manifest);
         if (registry.exists(descriptor.name(), descriptor.version())) {
             throw new ConflictException(
                     "bundle " + descriptor.coordinate() + " already published");

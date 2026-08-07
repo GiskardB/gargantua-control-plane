@@ -29,6 +29,14 @@
   </properties>
 
   <dependencies>
+    <!-- Shared domain model: the canonical, Spring-free vocabulary (WorkloadKind,
+         Capability, WorkloadManifest, …) published by the Runtime. The Control Plane
+         speaks the same types as the components it serves rather than mirroring them. -->
+    <dependency>
+      <groupId>io.github.giskardb</groupId>
+      <artifactId>agent-core</artifactId>
+      <version>1.2.20</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>

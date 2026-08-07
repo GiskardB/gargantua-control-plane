@@ -9,7 +9,7 @@ import ai.gargantua.controlplane.catalog.model.CapabilityEntry;
 import ai.gargantua.controlplane.common.ConflictException;
 import ai.gargantua.controlplane.common.NotFoundException;
 import ai.gargantua.controlplane.common.ValidationException;
-import ai.gargantua.controlplane.domain.WorkloadKind;
+import ai.gargantua.core.workload.WorkloadKind;
 import ai.gargantua.controlplane.registry.model.BundleArtifact;
 import ai.gargantua.controlplane.registry.model.Environment;
 import ai.gargantua.controlplane.storage.FilesystemBlobStore;

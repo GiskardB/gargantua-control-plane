@@ -1,17 +1,16 @@
 package ai.gargantua.controlplane.registry.model;
 
-import ai.gargantua.controlplane.domain.BundleDescriptor;
 import java.util.EnumSet;
 import java.util.Set;
 
 /**
  * A published bundle version as the Registry tracks it: its immutable
- * {@link BundleDescriptor} plus the mutable set of environments it has been
+ * {@link PublishedBundle} plus the mutable set of environments it has been
  * promoted to. The manifest bytes live in the {@code BlobStore}, keyed by the
  * descriptor's coordinate.
  */
 public record BundleArtifact(
-        BundleDescriptor descriptor,
+        PublishedBundle descriptor,
         Set<Environment> environments) {
 
     public BundleArtifact {
@@ -20,7 +19,7 @@ public record BundleArtifact(
                 : EnumSet.copyOf(environments);
     }
 
-    public static BundleArtifact of(BundleDescriptor descriptor) {
+    public static BundleArtifact of(PublishedBundle descriptor) {
         return new BundleArtifact(descriptor, EnumSet.noneOf(Environment.class));
     }
 

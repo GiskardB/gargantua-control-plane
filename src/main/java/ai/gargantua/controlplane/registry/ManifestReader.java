@@ -1,9 +1,9 @@
 package ai.gargantua.controlplane.registry;
 
 import ai.gargantua.controlplane.common.ValidationException;
-import ai.gargantua.controlplane.domain.BundleDescriptor;
-import ai.gargantua.controlplane.domain.Capability;
-import ai.gargantua.controlplane.domain.WorkloadKind;
+import ai.gargantua.controlplane.registry.model.PublishedBundle;
+import ai.gargantua.core.capability.Capability;
+import ai.gargantua.core.workload.WorkloadKind;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
@@ -14,13 +14,15 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
  * Parses an uploaded {@code gargantua.ai/v1} manifest (YAML or JSON) into a
- * {@link BundleDescriptor}. This is the Control Plane's admission gate: it mirrors
+ * {@link PublishedBundle}. This is the Control Plane's admission gate: it mirrors
  * the invariants the Runtime enforces when it constructs a manifest record, so a
  * bundle that publishes here is one the Runtime will accept.
  *
@@ -44,10 +46,10 @@ public class ManifestReader {
      * Validate the manifest text and derive its descriptor.
      *
      * @param manifest raw YAML or JSON
-     * @return a descriptor with checksum over the exact bytes supplied
+     * @return a published-bundle projection with a checksum over the exact bytes supplied
      * @throws ValidationException if the manifest is malformed or violates invariants
      */
-    public BundleDescriptor read(String manifest) {
+    public PublishedBundle read(String manifest) {
         if (manifest == null || manifest.isBlank()) {
             throw new ValidationException("manifest is empty");
         }
@@ -78,7 +80,7 @@ public class ManifestReader {
         List<Capability> capabilities = readCapabilities(root.path("spec").get("capabilities"));
         String checksum = sha256(manifest.getBytes(StandardCharsets.UTF_8));
 
-        return new BundleDescriptor(
+        return new PublishedBundle(
                 name, version, kind, checksum, capabilities, labels, clock.instant());
     }
 
@@ -122,14 +124,14 @@ public class ManifestReader {
         for (JsonNode c : caps) {
             // A capability may be a bare string (name only) or an object.
             if (c.isTextual()) {
-                out.add(new Capability(c.asText(), null, null, null, null, List.of()));
+                out.add(new Capability(c.asText(), null, null, null, null, null, Set.of()));
                 continue;
             }
             String name = text(c, "name");
             if (name == null || name.isBlank()) {
                 throw new ValidationException("spec.capabilities[].name is required");
             }
-            List<String> tags = new ArrayList<>();
+            Set<String> tags = new LinkedHashSet<>();
             JsonNode tagsNode = c.get("tags");
             if (tagsNode != null && tagsNode.isArray()) {
                 tagsNode.forEach(t -> tags.add(t.asText()));
@@ -140,6 +142,7 @@ public class ManifestReader {
                     text(c, "version"),
                     nodeToString(c.get("inputSchema")),
                     nodeToString(c.get("outputSchema")),
+                    text(c, "implementedBy"),
                     tags));
         }
         return out;

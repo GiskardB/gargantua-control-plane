@@ -1,16 +1,22 @@
-package ai.gargantua.controlplane.domain;
+package ai.gargantua.controlplane.registry.model;
 
+import ai.gargantua.core.capability.Capability;
+import ai.gargantua.core.workload.WorkloadKind;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Immutable metadata about a published bundle — the declarative package the
- * Runtime later applies. Mirrors the Bundle object in the Gargantua domain model.
+ * The Registry's view of a published bundle: the immutable metadata the Control
+ * Plane derives from an accepted {@code gargantua.ai/v1} manifest.
  *
- * <p>A bundle is data, never executable code (ADR-003): the descriptor records what
- * it is, what it exposes and how to verify it, but the manifest bytes themselves
- * live in the {@code BlobStore}.
+ * <p>This is a Registry projection, not the domain's {@link
+ * ai.gargantua.core.bundle.BundleDescriptor} — that one models a compiled bundle's
+ * provenance (signature, runtime image), whereas this one is what the Control Plane
+ * indexes and promotes: the workload kind and the capabilities the manifest declares,
+ * plus the checksum over the exact bytes stored in the {@code BlobStore}. The shared
+ * vocabulary it is built from ({@link WorkloadKind}, {@link Capability}) comes from
+ * agent-core, so the Registry and the Runtime name the same things the same way.
  *
  * @param name         bundle name, taken from the manifest metadata
  * @param version      bundle version, taken from the manifest metadata
@@ -20,7 +26,7 @@ import java.util.Map;
  * @param labels       free-form metadata copied from the manifest
  * @param createdAt    when the Control Plane accepted the bundle
  */
-public record BundleDescriptor(
+public record PublishedBundle(
         String name,
         String version,
         WorkloadKind kind,
@@ -29,7 +35,7 @@ public record BundleDescriptor(
         Map<String, String> labels,
         Instant createdAt) {
 
-    public BundleDescriptor {
+    public PublishedBundle {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("bundle name must not be blank");
         }

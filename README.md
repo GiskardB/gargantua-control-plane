@@ -95,18 +95,18 @@ Control Plane non lo tocca mai.
 - **Java 25 (LTS) + Spring Boot 4.1** (web, validation, actuator, Jackson YAML).
   Ultima LTS per sfruttare al meglio GC (Generational ZGC) e gestione memoria —
   performance e memoria sono un requisito di piattaforma, non un dettaglio.
-- Self-contained: i tipi di dominio (`WorkloadKind`, `Capability`,
-  `BundleDescriptor`) sono un mirror locale di quelli di `agent-core`, non una
-  dipendenza — per tenere la build del Control Plane disaccoppiata dalla release
-  cadence del Runtime. Il contratto condiviso è il *domain model doc*, non un jar.
-  Stessa scelta fatta per i tipi TypeScript di `gargantua-studio`. (Ora entrambi
-  girano su Java 25: se un domani il coupling conviene, si può adottare
-  `agent-core` direttamente.)
+- **Modello di dominio condiviso**: i tipi del vocabolario (`WorkloadKind`,
+  `Capability`, …) vengono da `io.github.giskardb:agent-core`, il modulo di dominio
+  puro (Spring-free) pubblicato dal Runtime. Il Control Plane parla gli **stessi tipi**
+  dei componenti che serve invece di rispecchiarli localmente — così Registry e Runtime
+  nominano le stesse cose allo stesso modo. Ciò che resta locale è solo la *proiezione*
+  del Control Plane: `PublishedBundle` (kind + capability + checksum indicizzati dal
+  Registry), distinta dal `BundleDescriptor` di dominio (provenienza: firma, immagine).
 
 ```
-ai.gargantua.controlplane
-├── domain/       WorkloadKind, Capability, BundleDescriptor
-├── registry/     Registry (port) + Jdbc/InMemory, RegistryService, ManifestReader
+ai.gargantua.controlplane                (dominio condiviso: ai.gargantua.core.* da agent-core)
+├── registry/     Registry (port) + Jdbc/InMemory, RegistryService, ManifestReader,
+│                 model/PublishedBundle (proiezione registry), BundleArtifact
 ├── catalog/      Catalog (port) + Jdbc/InMemory, CatalogService
 ├── policy/       PolicyManager (port) + Jdbc/InMemory, PolicyService (+ evaluate)
 ├── deployment/   DeploymentManager (port) + Jdbc/InMemory, DeploymentService

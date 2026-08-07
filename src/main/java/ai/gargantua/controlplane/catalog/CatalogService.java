@@ -4,8 +4,8 @@ import ai.gargantua.controlplane.catalog.model.AgentRegistration;
 import ai.gargantua.controlplane.catalog.model.AgentRegistrationRequest;
 import ai.gargantua.controlplane.catalog.model.CapabilityEntry;
 import ai.gargantua.controlplane.common.NotFoundException;
-import ai.gargantua.controlplane.domain.BundleDescriptor;
-import ai.gargantua.controlplane.domain.Capability;
+import ai.gargantua.controlplane.registry.model.PublishedBundle;
+import ai.gargantua.core.capability.Capability;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class CatalogService {
      * that bundle's coordinate. Called by the Registry on publish so discovery never
      * lags behind the artifact store.
      */
-    public void indexBundle(BundleDescriptor descriptor) {
+    public void indexBundle(PublishedBundle descriptor) {
         for (Capability capability : descriptor.capabilities()) {
             catalog.indexCapability(
                     capability.name(),
