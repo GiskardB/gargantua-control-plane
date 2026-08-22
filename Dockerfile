@@ -1,15 +1,28 @@
 # Gargantua Control Plane — self-contained multi-stage image.
 #
-# agent-core (io.github.giskardb:agent-core) is resolved from Maven Central, so this
-# build needs nothing but this repo as its context — no sibling Runtime checkout.
+# The shared agent-core is built FROM SOURCE here (stage `agentcore`) so the image needs
+# no Maven Central release of agent-core — important while the model is on a -SNAPSHOT.
+# The Runtime repo is supplied as a named build context `runtime_src` (see the compose
+# file: `additional_contexts: { runtime_src: ../gargantua }`). To build this repo
+# standalone, pass it yourself:
+#   docker build --build-context runtime_src=../gargantua -t gargantua-control-plane .
+
+# 1) Build + install agent-core (and the parent POM) into a local Maven repo.
+FROM maven:3.9-eclipse-temurin-25-alpine AS agentcore
+WORKDIR /ac
+COPY --from=runtime_src pom.xml ./pom.xml
+COPY --from=runtime_src agent-core ./agent-core
+RUN mvn -q -N install && mvn -q -pl agent-core install -DskipTests
+
+# 2) Build the Control Plane against that locally-built agent-core.
 FROM maven:3.9-eclipse-temurin-25-alpine AS builder
 WORKDIR /build
+COPY --from=agentcore /root/.m2/repository/io/github/giskardb /root/.m2/repository/io/github/giskardb
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -q
 COPY src src
-RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests -q
+RUN mvn -q clean package -DskipTests
 
-# Glibc-based JRE (Ubuntu Jammy) for parity with the other Gargantua JVM images.
+# 3) Glibc-based JRE (Ubuntu Jammy) runtime.
 FROM eclipse-temurin:25-jre-jammy
 # curl is used by the Compose healthcheck (and handy for debugging).
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
