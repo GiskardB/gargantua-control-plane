@@ -8,10 +8,12 @@
 #   docker build --build-context runtime_src=../gargantua -t gargantua-control-plane .
 
 # 1) Build + install agent-core (and the parent POM) into a local Maven repo.
+#    The full Runtime repo is copied (not just agent-core/) because `mvn -N install`
+#    validates the reactor's declared <modules> exist on disk even in non-recursive
+#    mode — the Runtime repo's .dockerignore keeps this cheap (excludes target/, .git).
 FROM maven:3.9-eclipse-temurin-25-alpine AS agentcore
 WORKDIR /ac
-COPY --from=runtime_src pom.xml ./pom.xml
-COPY --from=runtime_src agent-core ./agent-core
+COPY --from=runtime_src . .
 RUN mvn -q -N install && mvn -q -pl agent-core install -DskipTests
 
 # 2) Build the Control Plane against that locally-built agent-core.
