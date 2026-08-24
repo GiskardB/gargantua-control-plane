@@ -94,6 +94,29 @@ class RegistryServiceTest {
     }
 
     @Test
+    void storesRunnableBundleZipWithSkills() throws Exception {
+        service.publish(MANIFEST, java.util.Map.of("greeter-skill", "---\nname: greeter-skill\n---\nHi"));
+
+        byte[] zip = service.bundleZip("summarizer", "1.0.0");
+        java.util.Map<String, String> entries = new java.util.HashMap<>();
+        try (var zin = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zip))) {
+            java.util.zip.ZipEntry e;
+            while ((e = zin.getNextEntry()) != null) {
+                entries.put(e.getName(), new String(zin.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            }
+        }
+        assertThat(entries).containsKeys("manifest.yaml", "skills/greeter-skill/SKILL.md");
+        assertThat(entries.get("manifest.yaml")).isEqualTo(MANIFEST);
+        assertThat(entries.get("skills/greeter-skill/SKILL.md")).contains("greeter-skill");
+    }
+
+    @Test
+    void bundleZipMissingForUnknownVersionIsNotFound() {
+        assertThatThrownBy(() -> service.bundleZip("nope", "1.0.0"))
+                .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
     void promoteAdvancesEnvironments() {
         service.publish(MANIFEST);
         BundleArtifact promoted = service.promote("summarizer", "1.0.0", Environment.STAGING);

@@ -31,7 +31,7 @@ public class RegistryController {
     @PostMapping("/bundles")
     @ResponseStatus(HttpStatus.CREATED)
     public BundleArtifact publish(@Valid @RequestBody PublishRequest request) {
-        return registryService.publish(request.manifest());
+        return registryService.publish(request.manifest(), request.skillFiles());
     }
 
     @GetMapping("/bundles")
@@ -52,6 +52,11 @@ public class RegistryController {
     @GetMapping(value = "/bundles/{name}/{version}/manifest", produces = "application/yaml")
     public String manifest(@PathVariable String name, @PathVariable String version) {
         return registryService.manifest(name, version);
+    }
+
+    @GetMapping(value = "/bundles/{name}/{version}/bundle", produces = "application/octet-stream")
+    public byte[] bundle(@PathVariable String name, @PathVariable String version) {
+        return registryService.bundleZip(name, version);
     }
 
     @PostMapping("/bundles/{name}/{version}/promote")

@@ -7,9 +7,15 @@ import ai.gargantua.controlplane.registry.model.BundleArtifact;
 import ai.gargantua.controlplane.registry.model.Environment;
 import ai.gargantua.controlplane.registry.model.PublishedBundle;
 import ai.gargantua.controlplane.storage.BlobStore;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.springframework.stereotype.Service;
 
 /**
@@ -44,6 +50,16 @@ public class RegistryService {
      * existing {@code name@version} is a conflict, not an overwrite.
      */
     public BundleArtifact publish(String manifest) {
+        return publish(manifest, Map.of());
+    }
+
+    /**
+     * Publish a manifest together with the raw {@code SKILL.md} content of each skill
+     * (keyed by skill name). In addition to the manifest blob, this stores a runnable
+     * {@code .gbundle} zip (manifest + {@code skills/<name>/SKILL.md}) that a Runtime can
+     * download and execute directly.
+     */
+    public BundleArtifact publish(String manifest, Map<String, String> skillFiles) {
         PublishedBundle descriptor = manifestReader.read(manifest);
         if (registry.exists(descriptor.name(), descriptor.version())) {
             throw new ConflictException(
@@ -51,6 +67,8 @@ public class RegistryService {
         }
         blobStore.put(blobKey(descriptor.name(), descriptor.version()),
                 manifest.getBytes(StandardCharsets.UTF_8));
+        blobStore.put(bundleKey(descriptor.name(), descriptor.version()),
+                zipBundle(manifest, skillFiles));
 
         BundleArtifact artifact = BundleArtifact.of(descriptor);
         registry.save(artifact);
@@ -90,6 +108,14 @@ public class RegistryService {
                         "manifest bytes missing for " + name + "@" + version));
     }
 
+    /** The runnable {@code .gbundle} zip bytes for a published version. */
+    public byte[] bundleZip(String name, String version) {
+        get(name, version); // 404 if the version is unknown
+        return blobStore.get(bundleKey(name, version))
+                .orElseThrow(() -> new NotFoundException(
+                        "bundle zip missing for " + name + "@" + version));
+    }
+
     /** Promote a published version to an environment (idempotent per environment). */
     public BundleArtifact promote(String name, String version, Environment environment) {
         BundleArtifact current = get(name, version);
@@ -100,5 +126,28 @@ public class RegistryService {
 
     private static String blobKey(String name, String version) {
         return name + "/" + version + "/manifest.yaml";
+    }
+
+    private static String bundleKey(String name, String version) {
+        return name + "/" + version + "/bundle.gbundle";
+    }
+
+    private static byte[] zipBundle(String manifest, Map<String, String> skillFiles) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+            zip.putNextEntry(new ZipEntry("manifest.yaml"));
+            zip.write(manifest.getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
+            if (skillFiles != null) {
+                for (Map.Entry<String, String> skill : skillFiles.entrySet()) {
+                    zip.putNextEntry(new ZipEntry("skills/" + skill.getKey() + "/SKILL.md"));
+                    zip.write(skill.getValue().getBytes(StandardCharsets.UTF_8));
+                    zip.closeEntry();
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot build bundle zip", e);
+        }
+        return out.toByteArray();
     }
 }
