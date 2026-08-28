@@ -53,4 +53,9 @@ public class JdbcRegistry implements Registry {
     public boolean exists(String name, String version) {
         return store.exists(COLLECTION, name + "@" + version);
     }
+
+    @Override
+    public boolean delete(String name, String version) {
+        return store.delete(COLLECTION, name + "@" + version);
+    }
 }

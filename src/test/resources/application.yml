@@ -13,3 +13,8 @@ spring:
 gargantua:
   storage:
     blob-dir: ./target/test-blobs
+  # RuntimeLauncher requires these; tests never actually launch a container so the
+  # values just need to satisfy @Value, not run.
+  launch:
+    command-template: "true"
+    workdir: .

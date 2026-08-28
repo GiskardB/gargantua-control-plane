@@ -28,4 +28,7 @@ public interface Registry {
 
     /** Whether a specific version already exists. */
     boolean exists(String name, String version);
+
+    /** Remove an artifact; returns whether it existed. */
+    boolean delete(String name, String version);
 }

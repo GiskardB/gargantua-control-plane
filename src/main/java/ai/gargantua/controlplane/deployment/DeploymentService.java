@@ -13,10 +13,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * The Deployment subsystem's use cases: record a desired deployment and expose its
- * last-known state. A minimal stub for the MVP — it validates that the bundle
- * version actually exists in the Registry before accepting the deployment, then
- * records it as {@code PENDING} for the Runtime to pick up. It does not itself drive
- * a rollout (ADR-004).
+ * last-known state. Validates bundle existence before accepting deployment.
+ * Launch is triggered via POST /{id}/launch endpoint.
  */
 @Service
 public class DeploymentService {

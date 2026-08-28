@@ -48,6 +48,11 @@ public class InMemoryRegistry implements Registry {
         return byCoordinate.containsKey(name + "@" + version);
     }
 
+    @Override
+    public boolean delete(String name, String version) {
+        return byCoordinate.remove(name + "@" + version) != null;
+    }
+
     private static String key(BundleArtifact artifact) {
         return artifact.descriptor().coordinate();
     }

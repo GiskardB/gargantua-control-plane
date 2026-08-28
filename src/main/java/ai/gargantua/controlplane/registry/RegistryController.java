@@ -6,6 +6,7 @@ import ai.gargantua.controlplane.registry.model.PublishRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,7 +32,7 @@ public class RegistryController {
     @PostMapping("/bundles")
     @ResponseStatus(HttpStatus.CREATED)
     public BundleArtifact publish(@Valid @RequestBody PublishRequest request) {
-        return registryService.publish(request.manifest(), request.skillFiles());
+        return registryService.publish(request.manifest(), request.skillFiles(), request.skillReferenceFiles());
     }
 
     @GetMapping("/bundles")
@@ -65,5 +66,11 @@ public class RegistryController {
             @PathVariable String version,
             @Valid @RequestBody PromotionRequest request) {
         return registryService.promote(name, version, request.environment());
+    }
+
+    @DeleteMapping("/bundles/{name}/{version}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String name, @PathVariable String version) {
+        registryService.delete(name, version);
     }
 }

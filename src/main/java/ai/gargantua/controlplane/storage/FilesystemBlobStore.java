@@ -10,13 +10,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * Filesystem-backed {@link BlobStore} — the durable default. Writes each blob as a
- * file under a configured root directory; the key becomes a relative path. Suitable
- * for the single-node deployment and for tests that point it at a temp dir. The
- * {@code minio} profile replaces it with {@link S3BlobStore}.
+ * Filesystem-backed {@link BlobStore} — writes each blob as a file under a configured
+ * root directory; the key becomes a relative path. Use the {@code filesystem} profile
+ * to activate this implementation explicitly; the default remains {@link PostgresBlobStore}.
  */
 @Component
-@Profile("!minio")
+@Profile("filesystem")
 public class FilesystemBlobStore implements BlobStore {
 
     private final Path root;
@@ -57,6 +56,15 @@ public class FilesystemBlobStore implements BlobStore {
     @Override
     public boolean exists(String key) {
         return Files.exists(resolve(key));
+    }
+
+    @Override
+    public void delete(String key) {
+        try {
+            Files.deleteIfExists(resolve(key));
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot delete blob: " + key, e);
+        }
     }
 
     /** Resolve a key under root, refusing traversal outside it. */

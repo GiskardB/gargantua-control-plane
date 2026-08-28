@@ -6,7 +6,7 @@ cosa è disponibile — e lo espone a tutti gli altri componenti.
 
 > **Stato: MVP funzionante.** I quattro sotto-sistemi esistono e rispondono via
 > HTTP; la persistenza è in-memory più filesystem per i bundle, dietro *port* così
-> da poter passare a Postgres/MinIO senza toccare i chiamanti. Vedi §5–§7.
+> da poter passare a Postgres senza toccare i chiamanti. Vedi §5–§7.
 
 ---
 
@@ -110,7 +110,7 @@ ai.gargantua.controlplane                (dominio condiviso: ai.gargantua.core.*
 ├── catalog/      Catalog (port) + Jdbc/InMemory, CatalogService
 ├── policy/       PolicyManager (port) + Jdbc/InMemory, PolicyService (+ evaluate)
 ├── deployment/   DeploymentManager (port) + Jdbc/InMemory, DeploymentService
-├── storage/      BlobStore (Filesystem | S3) + DocumentStore (JdbcDocumentStore)
+├── storage/      BlobStore (Postgres | Filesystem) + DocumentStore (JdbcDocumentStore)
 └── common/       gestione errori uniforme (ApiError), Clock, ObjectMapper, RootController
 ```
 
@@ -119,10 +119,10 @@ lo stato (registry, catalog, policy, deployment) vive in un piccolo *document st
 JDBC (aggregati serializzati in JSON, tabella `cp_document`), i byte dei manifest nel
 `BlobStore`. I backend si scelgono per profilo senza toccare i chiamanti:
 
-| Cosa | Default (zero-infra) | Profilo `postgres` / `minio` |
+| Cosa | Default (zero-infra) | Profilo `postgres` |
 |---|---|---|
 | Stato (document store) | **H2 embedded** su file (`./data/db`) | **Postgres** (stesso schema) |
-| Manifest (blob) | **Filesystem** (`./data/blobs`) | **MinIO / S3** |
+| Manifest (blob) | **PostgresBlobStore** (in cp_document) | **PostgresBlobStore** |
 | `InMemory*` | — (test double per gli unit test) | — |
 
 ## 6. Build ed esecuzione
@@ -132,8 +132,7 @@ mvn test            # 18 test: context, RegistryService, PolicyService, API end-
 mvn spring-boot:run # avvia su http://localhost:8080 (durevole su ./data), override --server.port=NNNN
 
 # Backend di Cave, attivabili senza modifiche al codice:
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres        # stato → Postgres
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres,minio  # stato → Postgres, blob → MinIO
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres        # stato → Postgres (manifest blobs stored in DB)
 ```
 
 `GET /` restituisce l'indice dei sotto-sistemi; `GET /actuator/health` la salute.
@@ -165,7 +164,7 @@ Gli errori usano un corpo uniforme `ApiError` (`status`, `error`, `message`,
 ## 8. Cosa resta (post-MVP)
 
 Registry, Catalog, Policy e Deployment sono funzionali e persistenti. In ordine
-indicativo restano: verifica dei profili `postgres`/`minio` contro i servizi reali
+indicativo restano: verifica del profilo `postgres` contro i servizi reali
 di Cave (oggi spenti), firma digitale dei bundle, enforcement delle policy ai punti
 di applicazione (Runtime/Gateway), orchestrazione reale del rollout (rolling/canary)
 nel Deployment Manager, health e SLA nel Catalog.

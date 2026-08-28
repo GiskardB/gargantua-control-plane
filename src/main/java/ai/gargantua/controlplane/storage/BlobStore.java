@@ -5,9 +5,9 @@ import java.util.Optional;
 /**
  * Content-addressable store for the raw bundle manifest bytes.
  *
- * <p>A port (ADR-004 style): the MVP backs it with the local filesystem, but the
- * contract is deliberately narrow so a MinIO/S3 backend can replace it without
- * touching the Registry. Blobs are immutable and keyed by their coordinate.
+ * <p>The contract is deliberately narrow so a different implementation can
+ * replace it without touching the Registry. Blobs are immutable and keyed by
+ * their coordinate.
  */
 public interface BlobStore {
 
@@ -25,4 +25,7 @@ public interface BlobStore {
 
     /** Whether a blob exists for the key. */
     boolean exists(String key);
+
+    /** Remove a blob; a no-op if it does not exist. */
+    void delete(String key);
 }

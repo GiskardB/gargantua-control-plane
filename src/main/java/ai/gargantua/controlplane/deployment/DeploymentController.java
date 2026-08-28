@@ -2,11 +2,13 @@ package ai.gargantua.controlplane.deployment;
 
 import ai.gargantua.controlplane.deployment.model.Deployment;
 import ai.gargantua.controlplane.deployment.model.DeploymentRequest;
+import ai.gargantua.controlplane.deployment.model.DeploymentState;
 import ai.gargantua.controlplane.deployment.model.DeploymentStateRequest;
 import ai.gargantua.controlplane.registry.model.Environment;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,16 +21,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * HTTP surface of the Deployment Manager: create deployments, list and fetch them,
- * and record observed state transitions.
+ * launch runtimes, and record observed state transitions.
  */
 @RestController
 @RequestMapping("/api/v1/deployments")
 public class DeploymentController {
 
     private final DeploymentService deploymentService;
+    private final RuntimeLauncher runtimeLauncher;
 
-    public DeploymentController(DeploymentService deploymentService) {
+    public DeploymentController(
+            DeploymentService deploymentService,
+            RuntimeLauncher runtimeLauncher) {
         this.deploymentService = deploymentService;
+        this.runtimeLauncher = runtimeLauncher;
     }
 
     @PostMapping
@@ -49,6 +55,29 @@ public class DeploymentController {
     @GetMapping("/{id}")
     public Deployment get(@PathVariable String id) {
         return deploymentService.get(id);
+    }
+
+    /**
+     * Triggers the Control Plane to start the runtime container for this deployment.
+     * Returns immediately after marking state PROGRESSING — the actual launch happens
+     * in a background thread. Poll GET /api/v1/deployments/{id} to see final state.
+     */
+    @PostMapping("/{id}/launch")
+    public Deployment launch(@PathVariable String id) {
+        Deployment deployment = deploymentService.get(id);
+        deploymentService.updateState(id, DeploymentState.PROGRESSING);
+        doLaunchAsync(deployment.id(), deployment.bundleName(), deployment.bundleVersion());
+        return deploymentService.get(id);
+    }
+
+    @Async
+    void doLaunchAsync(String id, String name, String version) {
+        try {
+            runtimeLauncher.launch(id, name, version);
+            deploymentService.updateState(id, DeploymentState.HEALTHY);
+        } catch (Exception e) {
+            deploymentService.updateState(id, DeploymentState.FAILED);
+        }
     }
 
     @PutMapping("/{id}/state")
