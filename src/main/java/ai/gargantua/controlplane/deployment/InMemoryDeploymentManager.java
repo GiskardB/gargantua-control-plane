@@ -28,4 +28,9 @@ public class InMemoryDeploymentManager implements DeploymentManager {
     public Optional<Deployment> find(String id) {
         return Optional.ofNullable(byId.get(id));
     }
+
+    @Override
+    public boolean delete(String id) {
+        return byId.remove(id) != null;
+    }
 }

@@ -32,4 +32,9 @@ public class JdbcDeploymentManager implements DeploymentManager {
     public Optional<Deployment> find(String id) {
         return store.get(COLLECTION, id, Deployment.class);
     }
+
+    @Override
+    public boolean delete(String id) {
+        return store.delete(COLLECTION, id);
+    }
 }

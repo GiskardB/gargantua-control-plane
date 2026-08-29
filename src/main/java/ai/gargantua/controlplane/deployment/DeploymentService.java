@@ -77,4 +77,14 @@ public class DeploymentService {
         deploymentManager.save(next);
         return next;
     }
+
+    /**
+     * Clears the desired-deployment record. Purely a Control Plane bookkeeping action — it
+     * does not stop a running container, it just stops the Registry from treating this
+     * bundle version as deployed (see RegistryService#delete), so the version can be deleted.
+     */
+    public void undeploy(String id) {
+        get(id); // 404 if the id is unknown
+        deploymentManager.delete(id);
+    }
 }

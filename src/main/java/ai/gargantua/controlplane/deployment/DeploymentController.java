@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -85,5 +86,12 @@ public class DeploymentController {
             @PathVariable String id,
             @Valid @RequestBody DeploymentStateRequest request) {
         return deploymentService.updateState(id, request.state());
+    }
+
+    /** Clears this deployment record so its bundle version is no longer "still deployed". */
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void undeploy(@PathVariable String id) {
+        deploymentService.undeploy(id);
     }
 }

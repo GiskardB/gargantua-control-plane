@@ -15,4 +15,7 @@ public interface DeploymentManager {
     List<Deployment> findAll();
 
     Optional<Deployment> find(String id);
+
+    /** Removes the record — the "undeploy" that clears the Registry's delete-blocking check. */
+    boolean delete(String id);
 }
