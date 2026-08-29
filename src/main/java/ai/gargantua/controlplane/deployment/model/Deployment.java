@@ -13,6 +13,8 @@ import java.time.Instant;
  * @param environment   where it is deployed
  * @param strategy      how the rollout proceeds
  * @param state         last-known lifecycle state
+ * @param port          host port the runtime is reachable on, once known (null until then —
+ *                      each concurrently-launched agent gets its own, see Studio's LaunchService)
  * @param createdAt     when the deployment was requested
  * @param updatedAt     when the state last changed
  */
@@ -23,12 +25,14 @@ public record Deployment(
         Environment environment,
         RolloutStrategy strategy,
         DeploymentState state,
+        Integer port,
         Instant createdAt,
         Instant updatedAt) {
 
-    /** Return a copy in a new state, stamping {@code updatedAt}. */
-    public Deployment withState(DeploymentState newState, Instant at) {
+    /** Return a copy in a new state (and port, if known — null keeps whatever was recorded before). */
+    public Deployment withState(DeploymentState newState, Integer newPort, Instant at) {
         return new Deployment(
-                id, bundleName, bundleVersion, environment, strategy, newState, createdAt, at);
+                id, bundleName, bundleVersion, environment, strategy, newState,
+                newPort != null ? newPort : port, createdAt, at);
     }
 }

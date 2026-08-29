@@ -204,7 +204,7 @@ class RegistryServiceTest {
         service.publish(MANIFEST);
         deploymentManager.save(new Deployment(
                 "dep-1", "summarizer", "1.0.0", Environment.STAGING,
-                RolloutStrategy.ROLLING, DeploymentState.HEALTHY, clock.instant(), clock.instant()));
+                RolloutStrategy.ROLLING, DeploymentState.HEALTHY, null, clock.instant(), clock.instant()));
 
         assertThatThrownBy(() -> service.delete("summarizer", "1.0.0"))
                 .isInstanceOf(ConflictException.class);

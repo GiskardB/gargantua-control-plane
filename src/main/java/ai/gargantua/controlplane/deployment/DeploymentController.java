@@ -85,7 +85,7 @@ public class DeploymentController {
     public Deployment updateState(
             @PathVariable String id,
             @Valid @RequestBody DeploymentStateRequest request) {
-        return deploymentService.updateState(id, request.state());
+        return deploymentService.updateState(id, request.state(), request.port());
     }
 
     /** Clears this deployment record so its bundle version is no longer "still deployed". */

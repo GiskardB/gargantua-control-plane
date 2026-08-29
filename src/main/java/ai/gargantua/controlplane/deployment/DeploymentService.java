@@ -43,6 +43,7 @@ public class DeploymentService {
                 request.environment(),
                 request.strategyOrDefault(),
                 DeploymentState.PENDING,
+                null,
                 clock.instant(),
                 clock.instant());
         deploymentManager.save(deployment);
@@ -72,8 +73,13 @@ public class DeploymentService {
 
     /** Record a state transition reported for a deployment. */
     public Deployment updateState(String id, DeploymentState state) {
+        return updateState(id, state, null);
+    }
+
+    /** Record a state transition and, once known, the port the runtime answers on. */
+    public Deployment updateState(String id, DeploymentState state, Integer port) {
         Deployment current = get(id);
-        Deployment next = current.withState(state, clock.instant());
+        Deployment next = current.withState(state, port, clock.instant());
         deploymentManager.save(next);
         return next;
     }

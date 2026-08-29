@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
  * as a rollout progresses.
  *
  * @param state the new lifecycle state
+ * @param port  host port the runtime is reachable on, if just discovered (optional)
  */
-public record DeploymentStateRequest(@NotNull DeploymentState state) {
+public record DeploymentStateRequest(@NotNull DeploymentState state, Integer port) {
 }
