@@ -151,6 +151,7 @@ public class RegistryService {
         blobStore.delete(blobKey(name, version));
         blobStore.delete(bundleKey(name, version));
         registry.delete(name, version);
+        catalogService.deindexBundle(name + "@" + version);
     }
 
     private static String blobKey(String name, String version) {

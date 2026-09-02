@@ -16,6 +16,13 @@ public interface Catalog {
     /** Record that a provider supplies a capability; upserts the entry. */
     void indexCapability(String name, String description, String providerCoordinate);
 
+    /**
+     * Remove a provider from every capability entry it was attributed to; a capability
+     * left with no providers is removed entirely. Called by the Registry on delete so
+     * a removed bundle stops appearing in discovery.
+     */
+    void deindexProvider(String providerCoordinate);
+
     List<CapabilityEntry> listCapabilities();
 
     Optional<CapabilityEntry> findCapability(String name);

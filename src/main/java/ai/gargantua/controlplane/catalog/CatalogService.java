@@ -39,6 +39,14 @@ public class CatalogService {
         }
     }
 
+    /**
+     * Remove a bundle's capabilities from the index. Called by the Registry on
+     * delete so discovery never advertises a provider that no longer exists.
+     */
+    public void deindexBundle(String coordinate) {
+        catalog.deindexProvider(coordinate);
+    }
+
     public List<CapabilityEntry> capabilities() {
         return catalog.listCapabilities();
     }

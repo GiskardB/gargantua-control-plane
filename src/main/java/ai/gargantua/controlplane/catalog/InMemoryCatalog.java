@@ -41,6 +41,15 @@ public class InMemoryCatalog implements Catalog {
     }
 
     @Override
+    public void deindexProvider(String providerCoordinate) {
+        capabilities.entrySet().removeIf(entry -> {
+            Capability cap = entry.getValue();
+            cap.providers.remove(providerCoordinate);
+            return cap.providers.isEmpty();
+        });
+    }
+
+    @Override
     public List<CapabilityEntry> listCapabilities() {
         List<CapabilityEntry> out = new ArrayList<>();
         capabilities.forEach((name, cap) -> out.add(toEntry(name, cap)));

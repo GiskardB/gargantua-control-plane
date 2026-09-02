@@ -194,6 +194,29 @@ class RegistryServiceTest {
     }
 
     @Test
+    void deleteDeindexesCapabilitiesFromTheCatalog() {
+        service.publish(MANIFEST);
+        assertThat(catalogService.capabilities()).isNotEmpty();
+
+        service.delete("summarizer", "1.0.0");
+
+        assertThat(catalogService.capabilities()).isEmpty();
+    }
+
+    @Test
+    void deleteOnlyDeindexesTheDeletedProviderNotSiblings() {
+        String otherManifest = MANIFEST.replace("name: summarizer", "name: summarizer-2");
+        service.publish(MANIFEST);
+        service.publish(otherManifest);
+
+        service.delete("summarizer", "1.0.0");
+
+        List<CapabilityEntry> caps = catalogService.capabilities();
+        assertThat(caps).singleElement()
+                .satisfies(c -> assertThat(c.providers()).containsExactly("summarizer-2@1.0.0"));
+    }
+
+    @Test
     void deleteUnknownVersionIsNotFound() {
         assertThatThrownBy(() -> service.delete("nope", "1.0.0"))
                 .isInstanceOf(NotFoundException.class);

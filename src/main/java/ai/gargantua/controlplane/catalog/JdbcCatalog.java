@@ -48,6 +48,23 @@ public class JdbcCatalog implements Catalog {
     }
 
     @Override
+    public void deindexProvider(String providerCoordinate) {
+        for (CapabilityEntry entry : store.list(CAPS, CapabilityEntry.class)) {
+            if (!entry.providers().contains(providerCoordinate)) {
+                continue;
+            }
+            List<String> remaining = entry.providers().stream()
+                    .filter(p -> !p.equals(providerCoordinate))
+                    .toList();
+            if (remaining.isEmpty()) {
+                store.delete(CAPS, entry.name());
+            } else {
+                store.put(CAPS, entry.name(), new CapabilityEntry(entry.name(), entry.description(), remaining));
+            }
+        }
+    }
+
+    @Override
     public List<CapabilityEntry> listCapabilities() {
         List<CapabilityEntry> all = store.list(CAPS, CapabilityEntry.class);
         all.sort(Comparator.comparing(CapabilityEntry::name));
