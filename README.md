@@ -1,170 +1,171 @@
 # Gargantua Control Plane
 
-Control Plane della piattaforma **Gargantua AI Operating System**. Gestisce lo
-stato *desiderato* della piattaforma — cosa deve esistere, chi può fare cosa,
-cosa è disponibile — e lo espone a tutti gli altri componenti.
+[![License](https://img.shields.io/github/license/GiskardB/gargantua-control-plane?style=flat-square&color=blue)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-25-007396?style=flat-square&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/25/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?style=flat-square&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
 
-> **Stato: MVP funzionante.** I quattro sotto-sistemi esistono e rispondono via
-> HTTP; la persistenza è in-memory più filesystem per i bundle, dietro *port* così
-> da poter passare a Postgres senza toccare i chiamanti. Vedi §5–§7.
+**The fleet manager for the Gargantua platform** — where agents get published,
+discovered, governed, and deployed. If [Gargantua](../gargantua) runs *one* agent, the
+Control Plane is what you point at when you're running many.
 
----
+> **Optional, not required.** A single agent needs nothing here — a hand-written
+> `manifest.yaml` + `SKILL.md` and the Runtime jar is a complete setup on its own. The
+> Control Plane exists for the case where several agents, several environments, or
+> several teams need one shared source of truth for what's published and what's allowed.
 
-## 1. Ruolo nella piattaforma
+> **Status: working MVP.** All four subsystems below exist, are wired together, and are
+> covered by unit + end-to-end API tests. Persistence is durable (JDBC document store +
+> blob store), not in-memory — publish something, restart the process, it's still there.
+
+## Role in the platform
 
 ```
-Gargantua Studio → Desired State → Control Plane → Runtime State
+Gargantua Studio  →  desired state  →  Control Plane  →  Runtime state
 ```
 
-Il Control Plane **definisce** policy e stato desiderato. Il
-[Gargantua Runtime](../gargantua) li **applica**, ma non li possiede mai come
-fonte di verità: se ha bisogno di dati del Control Plane li raggiunge via API o
-li riceve dentro il bundle. Questa separazione è ADR-004 nel repository
-Runtime ed è vincolante — vedi
-[`gargantua/docs/architecture/runtime-decisions.md`](../gargantua/docs/architecture/runtime-decisions.md).
-
-Roadmap: **Phase 2** di
-[`gargantua/docs/architecture/ai-operating-system.md`](../gargantua/docs/architecture/ai-operating-system.md).
-
-## 2. Cosa dovrà contenere
-
-Quattro sotto-sistemi, secondo la sezione 6 del documento di visione:
-
-### 2.1 Agent Registry
-Repository degli artefatti immutabili.
-- Storage, versioning, rollback, promotion tra ambienti, download del bundle
-- Contiene: `.gbundle`, versioni, metadata, checksum SHA-256, firma digitale
-- **Non contiene stato runtime** — nessuna sessione, nessuna conversazione
-
-### 2.2 Agent Catalog
-Sistema di discovery, popolato via A2A dai runtime attivi.
-- **Non contiene codice o bundle**, solo metadati
-- Contiene: capability pubblicate, ownership, descrizione, SLA, tag, health,
-  endpoint, versioni in esecuzione
-- Sarà l'implementazione di `CatalogRegistrar`, oggi solo previsto lato
-  Runtime (vedi handoff del repo Runtime, §6)
-
-### 2.3 Policy Manager
-Governance centralizzata: RBAC, sicurezza, compliance, cost control, privacy.
-Il Runtime applica le policy che riceve da qui; l'enforcement locale a livello
-di singolo workload resta nel Runtime (ancora aperto lì, vedi handoff §6).
-
-### 2.4 Deployment Manager
-Lifecycle dei deployment: deploy, rollback, rollout progressivo, canary
-release, promotion tra ambienti (staging → produzione).
-
-## 3. Architettura
+The Control Plane **defines** desired state and policy. The [Gargantua Runtime](../gargantua)
+**applies** it, but never owns it as the source of truth — it reaches the Control Plane
+over API, or receives what it needs inside a bundle. This separation is **ADR-004** in the
+Runtime repo and is binding — see
+[`gargantua/docs/architecture/runtime-decisions.md`](https://github.com/GiskardB/gargantua/blob/main/docs/architecture/runtime-decisions.md).
 
 ```
                      +--------------------------------+
-                     |       Gargantua Studio         |
+                     |        Gargantua Studio         |
                      +----------------+---------------+
                                       |
-                               Desired State
+                               desired state
                                       |
                      +----------------v---------------+
-                     |   Gargantua Control Plane      |   <- questo repository
-                     |--------------------------------|
-                     | Registry | Catalog              |
-                     | Policy Manager | Deploy Manager  |
+                     |    Gargantua Control Plane      |   ← this repository
+                     |----------------------------------|
+                     | Registry | Catalog                |
+                     | Policy Manager | Deployment Manager|
                      +----------------+---------------+
                                       |
-                          API / bundle distribution
+                         API / bundle distribution
                                       |
                      +----------------v---------------+
-                     |        Gargantua Runtime        |
+                     |        Gargantua Runtime         |
                      +----------------------------------+
 ```
 
-Principio guida (sezione 11 del documento di visione): **Configuration State**
-(agent definition, bundle, versioni) è gestito qui dal Registry. Il **Runtime
-State** (sessioni, conversazioni, memoria, checkpoint) resta nel Runtime — il
-Control Plane non lo tocca mai.
+Guiding principle: **Configuration State** (agent definitions, bundles, versions) is
+managed here, by the Registry. **Runtime State** (sessions, conversations, memory,
+checkpoints) stays in the Runtime — the Control Plane never touches it.
 
-## 4. Riferimenti ad altri repository
+## The four subsystems
 
-| Repository | Relazione |
-|---|---|
-| [`gargantua`](../gargantua) | Runtime + metà esecutiva dell'AI Kernel. Consuma bundle e policy pubblicati da qui via API, non via accesso diretto allo storage. Vedi `docs/architecture/ai-operating-system.md` e `docs/architecture/runtime-decisions.md` (ADR-001..006) per il contratto completo. |
-| [`gargantua-studio`](../gargantua-studio) | Produce lo stato desiderato (agent definition, capability, policy) che questo Control Plane riceve, versiona e distribuisce. |
-| [`gargantua-gateway`](../gargantua-gateway) | Interroga il Catalog per il routing per-capability; non conosce staticamente gli agenti. |
-| [`gargantua-operator`](../gargantua-operator) | Fase 5. Traduce lo stato del Control Plane in risorse Kubernetes (CRD) e ne applica la riconciliazione. |
+### Registry
+The repository of immutable artifacts.
+- Storage, versioning, environment promotion (`DEV` → `STAGING` → `PRODUCTION`), rollback, bundle download.
+- Holds: the manifest, the runnable `.gbundle` zip, SHA-256 checksums, per-version metadata.
+- **Holds no runtime state** — no sessions, no conversations.
 
-## 5. Stack e struttura
+### Catalog
+The discovery system, populated by running Runtimes over A2A.
+- **No code or bundles here**, only metadata.
+- Holds: published capabilities, ownership, description, endpoint, running versions.
+
+### Policy Manager
+Centralized governance: RBAC, security, compliance, cost control, privacy. Deny-overrides
+evaluation with exact and prefix matching. The Runtime applies the policies it receives
+from here; local enforcement at the individual workload level is still open on the Runtime
+side (see that repo's platform-handoff doc).
+
+### Deployment Manager
+Deployment lifecycle: register a desired deployment, launch it (spawns the Runtime
+container via a configurable command template, tracks its assigned port), observe and
+update state (`PENDING` → `PROGRESSING` → `HEALTHY`/`FAILED`), undeploy.
+
+## Stack and structure
 
 - **Java 25 (LTS) + Spring Boot 4.1** (web, validation, actuator, Jackson YAML).
-  Ultima LTS per sfruttare al meglio GC (Generational ZGC) e gestione memoria —
-  performance e memoria sono un requisito di piattaforma, non un dettaglio.
-- **Modello di dominio condiviso**: i tipi del vocabolario (`WorkloadKind`,
-  `Capability`, …) vengono da `io.github.giskardb:agent-core`, il modulo di dominio
-  puro (Spring-free) pubblicato dal Runtime. Il Control Plane parla gli **stessi tipi**
-  dei componenti che serve invece di rispecchiarli localmente — così Registry e Runtime
-  nominano le stesse cose allo stesso modo. Ciò che resta locale è solo la *proiezione*
-  del Control Plane: `PublishedBundle` (kind + capability + checksum indicizzati dal
-  Registry), distinta dal `BundleDescriptor` di dominio (provenienza: firma, immagine).
+- **Shared domain model**: vocabulary types (`WorkloadKind`, `Capability`, …) come from
+  `io.github.giskardb:agent-core`, the Spring-free domain module published by the Runtime
+  repo. The Control Plane speaks the **same types** as the components it serves instead of
+  mirroring them locally — so Registry and Runtime name the same things the same way. What
+  stays local is only the Control Plane's own *projection*: `PublishedBundle` (kind +
+  capability + checksum, indexed for the Registry), distinct from the domain
+  `BundleDescriptor` (provenance: signature, image).
 
 ```
-ai.gargantua.controlplane                (dominio condiviso: ai.gargantua.core.* da agent-core)
-├── registry/     Registry (port) + Jdbc/InMemory, RegistryService, ManifestReader,
-│                 model/PublishedBundle (proiezione registry), BundleArtifact
-├── catalog/      Catalog (port) + Jdbc/InMemory, CatalogService
-├── policy/       PolicyManager (port) + Jdbc/InMemory, PolicyService (+ evaluate)
-├── deployment/   DeploymentManager (port) + Jdbc/InMemory, DeploymentService
-├── storage/      BlobStore (Postgres | Filesystem) + DocumentStore (JdbcDocumentStore)
-└── common/       gestione errori uniforme (ApiError), Clock, ObjectMapper, RootController
+ai.gargantua.controlplane                (shared domain: ai.gargantua.core.* from agent-core)
+├── registry/     Registry (port) + Jdbc-backed impl, RegistryService, ManifestReader,
+│                 model/PublishedBundle (registry projection), BundleArtifact
+├── catalog/      Catalog (port) + Jdbc-backed impl, CatalogService
+├── policy/       PolicyManager (port) + Jdbc-backed impl, PolicyService (+ evaluate)
+├── deployment/   DeploymentManager (port) + Jdbc-backed impl, DeploymentService,
+│                 RuntimeLauncher (spawns the Runtime process for a deployment)
+├── storage/      BlobStore (Postgres-backed, or filesystem via a profile) + JdbcDocumentStore
+└── common/       uniform error handling (ApiError), Clock, ObjectMapper, RootController
 ```
 
-Ogni sotto-sistema è dietro un **port** (ADR-004). La persistenza è **durevole**:
-lo stato (registry, catalog, policy, deployment) vive in un piccolo *document store*
-JDBC (aggregati serializzati in JSON, tabella `cp_document`), i byte dei manifest nel
-`BlobStore`. I backend si scelgono per profilo senza toccare i chiamanti:
+Every subsystem sits behind a **port** (ADR-004). Persistence is **durable**: state
+(registry, catalog, policy, deployment) lives in a small JDBC document store (JSON
+aggregates in a `cp_document` table); manifest and bundle bytes live in the `BlobStore`.
+Backends are chosen per Spring profile without touching any caller:
 
-| Cosa | Default (zero-infra) | Profilo `postgres` |
+| What | Default (zero-infra) | `postgres` profile |
 |---|---|---|
-| Stato (document store) | **H2 embedded** su file (`./data/db`) | **Postgres** (stesso schema) |
-| Manifest (blob) | **PostgresBlobStore** (in cp_document) | **PostgresBlobStore** |
-| `InMemory*` | — (test double per gli unit test) | — |
+| State (document store) | **embedded H2** on disk (`./data/db`) | **Postgres** (same schema) |
+| Manifest/bundle blobs | `PostgresBlobStore` (in `cp_document`, works on H2 too) | `PostgresBlobStore` |
+| Filesystem blobs | opt-in via the `filesystem` profile | opt-in via the `filesystem` profile |
 
-## 6. Build ed esecuzione
+## Build and run
 
 ```bash
-mvn test            # 18 test: context, RegistryService, PolicyService, API end-to-end (H2)
-mvn spring-boot:run # avvia su http://localhost:8080 (durevole su ./data), override --server.port=NNNN
+mvn test              # unit + end-to-end API tests (registry, catalog, policy, deployment)
+mvn spring-boot:run    # http://localhost:8080, durable on ./data — override with --server.port=NNNN
 
-# Backend di Cave, attivabili senza modifiche al codice:
-mvn spring-boot:run -Dspring-boot.run.profiles=postgres        # stato → Postgres (manifest blobs stored in DB)
+# Cave-backed profile, no code changes needed:
+mvn spring-boot:run -Dspring-boot.run.profiles=postgres   # state + blobs → Postgres
 ```
 
-`GET /` restituisce l'indice dei sotto-sistemi; `GET /actuator/health` la salute.
-La persistenza è verificata end-to-end: pubblicando dati, riavviando il processo e
-ritrovandoli (bundle, promozioni, capability, policy) sopravvivono al restart.
+`GET /` returns an index of the subsystems and their base paths; `GET /actuator/health`
+reports health. Persistence is verified end-to-end: publish something, restart the
+process, and bundles, promotions, capabilities and policies are all still there.
 
-## 7. API (v1)
+The fastest way to run it as part of the full platform is
+[`gargantua-compose`](../gargantua-compose), which wires this service to Postgres and
+[Gargantua Studio](../gargantua-studio) in one `docker compose up`.
 
-| Metodo & path | Cosa fa |
+## API (v1)
+
+| Method & path | What it does |
 |---|---|
-| `POST /api/v1/registry/bundles` | Pubblica un bundle dal manifest `gargantua.ai/v1` (YAML/JSON). Valida shape e invarianti, calcola il checksum SHA-256, indicizza le capability nel Catalog. Versioni immutabili → `409` se già presente. |
-| `GET /api/v1/registry/bundles` | Elenca tutti i bundle pubblicati. |
-| `GET /api/v1/registry/bundles/{name}/versions` | Versioni di un bundle. |
-| `GET /api/v1/registry/bundles/{name}/{version}` | Un artefatto specifico. |
-| `GET /api/v1/registry/bundles/{name}/{version}/manifest` | I byte del manifest originale. |
-| `POST /api/v1/registry/bundles/{name}/{version}/promote` | Promuove una versione a un ambiente (`DEV`/`STAGING`/`PRODUCTION`). |
-| `GET /api/v1/catalog/capabilities` | Capability pubblicate e chi le fornisce. |
-| `GET /api/v1/catalog/capabilities/{name}` | Una capability e i suoi provider. |
-| `POST /api/v1/catalog/agents` | Registrazione A2A di un agente attivo (endpoint + capability servite). |
-| `GET /api/v1/catalog/agents[?capability=…]` | Agenti registrati, filtrabili per capability. |
-| `POST /api/v1/policies` · `GET` · `GET /{id}` · `PUT /{id}` · `DELETE /{id}` | CRUD delle policy di governance. |
-| `POST /api/v1/policies/evaluate` | Decide un target contro le policy: `{target}` → `{decision, matched}`. Match esatto o per prefisso (`target:*`); **deny overrides**; nessun match = ALLOW. Definizione, non enforcement (ADR-004). |
-| `POST /api/v1/deployments` | Registra un deployment desiderato (valida che il bundle esista → `404` se no); stato iniziale `PENDING`. |
-| `GET /api/v1/deployments[?environment=…&bundle=…]` · `GET /{id}` · `PUT /{id}/state` | Elenco (filtrabile per ambiente/bundle), dettaglio e aggiornamento dello stato osservato. |
+| `POST /api/v1/registry/bundles` | Publish a bundle from a `gargantua.ai/v1` manifest (YAML/JSON). Validates shape and invariants, computes the SHA-256 checksum, indexes capabilities into the Catalog. Versions are immutable → `409` if already present. |
+| `GET /api/v1/registry/bundles` | List every published bundle. |
+| `GET /api/v1/registry/bundles/{name}/versions` | Versions of one bundle. |
+| `GET /api/v1/registry/bundles/{name}/{version}` | One specific artifact. |
+| `GET /api/v1/registry/bundles/{name}/{version}/manifest` | The raw manifest bytes. |
+| `GET /api/v1/registry/bundles/{name}/{version}/bundle` | The assembled, runnable `.gbundle` zip. |
+| `POST /api/v1/registry/bundles/{name}/{version}/promote` | Promote a version to an environment (`DEV`/`STAGING`/`PRODUCTION`). |
+| `DELETE /api/v1/registry/bundles/{name}/{version}` | Remove a bundle version; de-indexes its capabilities from the Catalog. |
+| `GET /api/v1/catalog/capabilities` | Published capabilities and who provides them. |
+| `GET /api/v1/catalog/capabilities/{name}` | One capability and its providers. |
+| `POST /api/v1/catalog/agents` | A2A registration of a running agent (endpoint + capabilities served). |
+| `GET /api/v1/catalog/agents[?capability=…]` | Registered agents, optionally filtered by capability. |
+| `POST /api/v1/policies` · `GET` · `GET /{id}` · `PUT /{id}` · `DELETE /{id}` | CRUD for governance policies. |
+| `POST /api/v1/policies/evaluate` | Decide a target against the policies: `{target}` → `{decision, matched}`. Exact or prefix match (`target:*`); **deny overrides**; no match = ALLOW. Definition, not enforcement (ADR-004). |
+| `POST /api/v1/deployments` | Register a desired deployment (validates the bundle exists → `404` if not); starts `PENDING`. |
+| `GET /api/v1/deployments[?environment=…&bundle=…]` · `GET /{id}` | List (filterable by environment/bundle), and detail. |
+| `POST /api/v1/deployments/{id}/launch` | Starts the Runtime container for this deployment (async — returns immediately in `PROGRESSING`, poll `GET /{id}` for `HEALTHY`/`FAILED`). |
+| `PUT /api/v1/deployments/{id}/state` | Update the observed state (and, once known, the assigned port). |
+| `DELETE /api/v1/deployments/{id}` | Clear a deployment record. |
 
-Gli errori usano un corpo uniforme `ApiError` (`status`, `error`, `message`,
-`path`, `timestamp`).
+Errors use a uniform `ApiError` body (`status`, `error`, `message`, `path`, `timestamp`).
 
-## 8. Cosa resta (post-MVP)
+## What's left (post-MVP)
 
-Registry, Catalog, Policy e Deployment sono funzionali e persistenti. In ordine
-indicativo restano: verifica del profilo `postgres` contro i servizi reali
-di Cave (oggi spenti), firma digitale dei bundle, enforcement delle policy ai punti
-di applicazione (Runtime/Gateway), orchestrazione reale del rollout (rolling/canary)
-nel Deployment Manager, health e SLA nel Catalog.
+Registry, Catalog, Policy and Deployment are functional and persistent. In rough order:
+verifying the `postgres` profile against Cave's real services end-to-end, digital
+signing of bundles, policy enforcement at the actual enforcement points (Runtime/Gateway),
+real rollout orchestration (rolling/canary) in the Deployment Manager, and health/SLA
+tracking in the Catalog.
+
+## Where to next
+
+- [`gargantua`](../gargantua) — the Runtime that applies what this Control Plane defines; see ADR-004 for the contract
+- [`gargantua-studio`](../gargantua-studio) — the visual designer that publishes to and reads from this Control Plane
+- [`gargantua-compose`](../gargantua-compose) — one command to run this service, Studio and Postgres together
