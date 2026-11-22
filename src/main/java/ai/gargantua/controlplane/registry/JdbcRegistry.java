@@ -39,9 +39,8 @@ public class JdbcRegistry implements Registry {
 
     @Override
     public List<BundleArtifact> findByName(String name) {
-        return findAll().stream()
-                .filter(a -> a.descriptor().name().equals(name))
-                .toList();
+        // Ids are "name@version", so one bundle's versions share the prefix "name@".
+        return store.listByIdPrefix(COLLECTION, name + "@", BundleArtifact.class);
     }
 
     @Override

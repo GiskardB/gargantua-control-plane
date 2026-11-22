@@ -33,7 +33,10 @@ RUN groupadd --system app && useradd --system --gid app app
 USER app
 WORKDIR /app
 COPY --from=builder /build/target/*.jar app.jar
-# Profiles (postgres, minio) and connection details are supplied by Compose via env.
+# The `postgres` profile and connection details are supplied by Compose via env.
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
 EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# `exec` makes the JVM PID 1 so it receives SIGTERM: without it the signal stops at the
+# shell, Spring never shuts down gracefully, and `docker stop` waits out its full grace
+# period before killing the process.
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

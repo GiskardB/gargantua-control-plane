@@ -58,6 +58,16 @@ public class JdbcDocumentStore implements DocumentStore {
     }
 
     @Override
+    public <T> List<T> listByIdPrefix(String collection, String idPrefix, Class<T> type) {
+        // '%' and '_' are wildcards in LIKE and both are legal in an id, so they are
+        // escaped: the prefix must match literally.
+        String pattern = idPrefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
+        return jdbc.query(
+                "SELECT doc FROM cp_document WHERE collection = ? AND id LIKE ? ESCAPE '\\' ORDER BY id",
+                (rs, n) -> deserialize(rs.getString(1), type), collection, pattern);
+    }
+
+    @Override
     public boolean delete(String collection, String id) {
         return jdbc.update(
                 "DELETE FROM cp_document WHERE collection = ? AND id = ?", collection, id) > 0;

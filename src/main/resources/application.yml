@@ -24,13 +24,15 @@ gargantua:
     # (validated against ^[A-Za-z0-9._-]+$ first). Generic on purpose: swap for kubectl etc.
     # without a code change. Editable at runtime via deployment configuration.
     command-template: >-
-      docker rm -f gargantua-runtime-{$name} 2>/dev/null;
-      docker run -d --name gargantua-runtime-{$name} --network gargantua-compose_default -p 18100:8080
+      docker rm -f gargantua-runtime-{name} 2>/dev/null;
+      docker run -d --name gargantua-runtime-{name} --network gargantua_default -p 18100:8080
       -e GARGANTUA_BUNDLE_URL=http://control-plane:8080/api/v1/registry/bundles/{name}/{version}/bundle
       -e SPRING_PROFILES_ACTIVE=embedded,cave
       gargantua-runtime:local
     # Working directory the command runs in (unused by the docker-run default).
     workdir: .
+    # How long the command may run before the deployment is marked FAILED.
+    timeout-seconds: 300
 
 # Expose health/info so the platform can readiness-check the Control Plane.
 management:

@@ -24,6 +24,13 @@ public interface DocumentStore {
     /** All documents in a collection, deserialized. */
     <T> List<T> list(String collection, Class<T> type);
 
+    /**
+     * Documents in a collection whose id starts with {@code idPrefix}, deserialized and
+     * ordered by id. Answered from the primary-key index, so a caller after one bundle's
+     * versions does not have to load and parse the whole collection to find them.
+     */
+    <T> List<T> listByIdPrefix(String collection, String idPrefix, Class<T> type);
+
     /** Remove a document; returns whether a row existed. */
     boolean delete(String collection, String id);
 

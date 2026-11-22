@@ -36,6 +36,7 @@ public class ManifestReader {
     public static final String API_VERSION = "gargantua.ai/v1";
 
     private final YAMLMapper yaml = new YAMLMapper();
+    private final ObjectMapper json = new ObjectMapper();
     private final Clock clock;
 
     public ManifestReader(Clock clock) {
@@ -161,7 +162,7 @@ public class ManifestReader {
             return node.asText();
         }
         try {
-            return new ObjectMapper().writeValueAsString(node);
+            return json.writeValueAsString(node);
         } catch (Exception e) {
             return null;
         }
