@@ -74,9 +74,15 @@ from here; local enforcement at the individual workload level is still open on t
 side (see that repo's platform-handoff doc).
 
 ### Deployment Manager
-Deployment lifecycle: register a desired deployment, launch it (spawns the Runtime
-container via a configurable command template, tracks its assigned port), observe and
-update state (`PENDING` → `PROGRESSING` → `HEALTHY`/`FAILED`), undeploy.
+Deployment lifecycle: register a desired deployment, observe and update its state
+(`PENDING` → `PROGRESSING` → `HEALTHY`/`FAILED`) and assigned port, undeploy.
+
+The Control Plane **records** deployments; by default it does not **execute** them
+(ADR-004). An executor — Studio, in the reference stack — runs the launch and reports the
+outcome through `PUT /{id}/state`. Where nothing else can launch, set
+`gargantua.launch.enabled=true`: the Control Plane then exposes `POST /{id}/launch` and
+runs the configured command template itself. Bundle name and version are validated
+against `^[A-Za-z0-9._-]+$` before they are placed in that command.
 
 ## Stack and structure
 
@@ -96,7 +102,7 @@ ai.gargantua.controlplane                (shared domain: ai.gargantua.core.* fro
 ├── catalog/      Catalog (port) + Jdbc-backed impl, CatalogService
 ├── policy/       PolicyManager (port) + Jdbc-backed impl, PolicyService (+ evaluate)
 ├── deployment/   DeploymentManager (port) + Jdbc-backed impl, DeploymentService,
-│                 RuntimeLauncher (spawns the Runtime process for a deployment)
+│                 RuntimeLauncher (opt-in: spawns the Runtime for a deployment)
 ├── storage/      BlobStore (Postgres-backed, or filesystem via a profile) + JdbcDocumentStore
 └── common/       uniform error handling (ApiError), Clock, ObjectMapper, RootController
 ```
@@ -150,7 +156,7 @@ The fastest way to run it as part of the full platform is
 | `POST /api/v1/policies/evaluate` | Decide a target against the policies: `{target}` → `{decision, matched}`. Exact or prefix match (`target:*`); **deny overrides**; no match = ALLOW. Definition, not enforcement (ADR-004). |
 | `POST /api/v1/deployments` | Register a desired deployment (validates the bundle exists → `404` if not); starts `PENDING`. |
 | `GET /api/v1/deployments[?environment=…&bundle=…]` · `GET /{id}` | List (filterable by environment/bundle), and detail. |
-| `POST /api/v1/deployments/{id}/launch` | Starts the Runtime container for this deployment (async — returns immediately in `PROGRESSING`, poll `GET /{id}` for `HEALTHY`/`FAILED`). |
+| `POST /api/v1/deployments/{id}/launch` | **Opt-in** (`gargantua.launch.enabled=true`; otherwise 404). Starts the Runtime for this deployment — async: returns immediately in `PROGRESSING`, poll `GET /{id}` for `HEALTHY`/`FAILED`. A bundle whose name or version is not shell-safe is a 400. |
 | `PUT /api/v1/deployments/{id}/state` | Update the observed state (and, once known, the assigned port). |
 | `DELETE /api/v1/deployments/{id}` | Clear a deployment record. |
 

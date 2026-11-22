@@ -5,6 +5,7 @@ import ai.gargantua.controlplane.deployment.model.DeploymentState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,7 @@ import java.util.regex.Pattern;
  * {@code x; rm -rf /} is refused, never executed.
  */
 @Service
+@ConditionalOnProperty(prefix = "gargantua.launch", name = "enabled", havingValue = "true")
 public class RuntimeLauncher {
 
     private static final Logger log = LoggerFactory.getLogger(RuntimeLauncher.class);
@@ -43,7 +45,7 @@ public class RuntimeLauncher {
     public RuntimeLauncher(
             DeploymentService deploymentService,
             @Value("${gargantua.launch.command-template}") String commandTemplate,
-            @Value("${gargantua.launch.workdir}") String workdir,
+            @Value("${gargantua.launch.workdir:.}") String workdir,
             @Value("${gargantua.launch.timeout-seconds:300}") long timeoutSeconds) {
         this.deploymentService = deploymentService;
         this.commandTemplate = commandTemplate;

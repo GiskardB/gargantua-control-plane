@@ -2,7 +2,6 @@ package ai.gargantua.controlplane.deployment;
 
 import ai.gargantua.controlplane.deployment.model.Deployment;
 import ai.gargantua.controlplane.deployment.model.DeploymentRequest;
-import ai.gargantua.controlplane.deployment.model.DeploymentState;
 import ai.gargantua.controlplane.deployment.model.DeploymentStateRequest;
 import ai.gargantua.controlplane.registry.model.Environment;
 import jakarta.validation.Valid;
@@ -28,13 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeploymentController {
 
     private final DeploymentService deploymentService;
-    private final RuntimeLauncher runtimeLauncher;
 
-    public DeploymentController(
-            DeploymentService deploymentService,
-            RuntimeLauncher runtimeLauncher) {
+    public DeploymentController(DeploymentService deploymentService) {
         this.deploymentService = deploymentService;
-        this.runtimeLauncher = runtimeLauncher;
     }
 
     @PostMapping
@@ -62,16 +57,6 @@ public class DeploymentController {
      * Returns immediately after marking state PROGRESSING — the actual launch happens
      * in a background thread. Poll GET /api/v1/deployments/{id} to see final state.
      */
-    @PostMapping("/{id}/launch")
-    public Deployment launch(@PathVariable String id) {
-        Deployment deployment = deploymentService.get(id);
-        // Refuse an unlaunchable name here, synchronously, rather than in the background.
-        runtimeLauncher.validate(deployment.bundleName(), deployment.bundleVersion());
-        Deployment progressing = deploymentService.updateState(id, DeploymentState.PROGRESSING);
-        runtimeLauncher.launchAsync(deployment.id(), deployment.bundleName(), deployment.bundleVersion());
-        return progressing;
-    }
-
     @PutMapping("/{id}/state")
     public Deployment updateState(
             @PathVariable String id,

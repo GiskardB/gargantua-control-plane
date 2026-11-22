@@ -16,10 +16,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * The launch endpoint through the real context, where {@code @Async} is live. The test
+ * The opt-in launch endpoint through the real context, where {@code @Async} is live. The test
  * profile's command template is {@code true}, so "launching" succeeds without Docker.
  */
-@SpringBootTest
+@SpringBootTest(properties = "gargantua.launch.enabled=true")
 @AutoConfigureMockMvc
 class LaunchApiTest {
 

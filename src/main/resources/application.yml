@@ -20,6 +20,11 @@ server:
 # Launch command template for starting runtime containers (used by RuntimeLauncher).
 gargantua:
   launch:
+    # Whether this Control Plane exposes POST /api/v1/deployments/{id}/launch and runs the
+    # command below itself. Off by default: the Control Plane records desired state and an
+    # executor applies it (ADR-004) — Studio, in the reference stack. Turn it on only where
+    # nothing else can launch, and only on a host you are willing to let run this command.
+    enabled: false
     # The command Control Plane runs to start a published agent. {name}/{version} are substituted
     # (validated against ^[A-Za-z0-9._-]+$ first). Generic on purpose: swap for kubectl etc.
     # without a code change. Editable at runtime via deployment configuration.
