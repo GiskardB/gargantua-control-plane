@@ -8,7 +8,6 @@ import ai.gargantua.controlplane.registry.model.Environment;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -66,19 +65,11 @@ public class DeploymentController {
     @PostMapping("/{id}/launch")
     public Deployment launch(@PathVariable String id) {
         Deployment deployment = deploymentService.get(id);
-        deploymentService.updateState(id, DeploymentState.PROGRESSING);
-        doLaunchAsync(deployment.id(), deployment.bundleName(), deployment.bundleVersion());
-        return deploymentService.get(id);
-    }
-
-    @Async
-    void doLaunchAsync(String id, String name, String version) {
-        try {
-            runtimeLauncher.launch(id, name, version);
-            deploymentService.updateState(id, DeploymentState.HEALTHY);
-        } catch (Exception e) {
-            deploymentService.updateState(id, DeploymentState.FAILED);
-        }
+        // Refuse an unlaunchable name here, synchronously, rather than in the background.
+        runtimeLauncher.validate(deployment.bundleName(), deployment.bundleVersion());
+        Deployment progressing = deploymentService.updateState(id, DeploymentState.PROGRESSING);
+        runtimeLauncher.launchAsync(deployment.id(), deployment.bundleName(), deployment.bundleVersion());
+        return progressing;
     }
 
     @PutMapping("/{id}/state")
