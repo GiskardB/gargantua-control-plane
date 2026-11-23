@@ -82,7 +82,8 @@ The Control Plane **records** deployments; by default it does not **execute** th
 outcome through `PUT /{id}/state`. Where nothing else can launch, set
 `gargantua.launch.enabled=true`: the Control Plane then exposes `POST /{id}/launch` and
 runs the configured command template itself. Bundle name and version are validated
-against `^[A-Za-z0-9._-]+$` before they are placed in that command.
+against `^[A-Za-z0-9._-]+$` before they are placed in that command. A launch that exits
+non-zero, or outlives `gargantua.launch.timeout-seconds` (default 300), ends `FAILED`.
 
 ## Stack and structure
 
