@@ -19,6 +19,15 @@ server:
 
 # Launch command template for starting runtime containers (used by RuntimeLauncher).
 gargantua:
+  security:
+    # Bearer tokens for the API, comma-separated. Leave both empty and the API is open (a
+    # warning is logged at startup) — fine on a laptop, not on anything shared.
+    #   admin  — may read and change state (publish, promote, delete, register, deploy)
+    #   reader — may only read; enough for a Runtime to download its bundle
+    # Supply them from the environment, never commit them:
+    #   GARGANTUA_SECURITY_ADMIN_TOKENS, GARGANTUA_SECURITY_READER_TOKENS
+    admin-tokens: ${GARGANTUA_SECURITY_ADMIN_TOKENS:}
+    reader-tokens: ${GARGANTUA_SECURITY_READER_TOKENS:}
   launch:
     # Whether this Control Plane exposes POST /api/v1/deployments/{id}/launch and runs the
     # command below itself. Off by default: the Control Plane records desired state and an

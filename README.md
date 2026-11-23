@@ -137,6 +137,29 @@ The fastest way to run it as part of the full platform is
 [`gargantua-compose`](../gargantua-compose), which wires this service to Postgres and
 [Gargantua Studio](../gargantua-studio) in one `docker compose up`.
 
+## Authentication
+
+The API takes bearer tokens supplied by configuration — shared secrets, two kinds:
+
+| Token | May | Who needs it |
+|---|---|---|
+| **admin** | read and change state: publish, promote, delete, register, deploy | Studio, CI, the seed script |
+| **reader** | read only (every `GET`, plus `POST /policies/evaluate`) | a Runtime downloading its bundle |
+
+```bash
+GARGANTUA_SECURITY_ADMIN_TOKENS=$(openssl rand -hex 32)      # comma-separate to rotate
+GARGANTUA_SECURITY_READER_TOKENS=$(openssl rand -hex 32)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/registry/bundles
+```
+
+**With neither variable set the API is open**, and the Control Plane logs a warning at
+startup saying so. That is the default so a first run needs no setup; it is not a posture
+for anything other people can reach. `/actuator/health` and `/` are always open.
+
+A missing or wrong token is `401`; a reader token on a write is `403`. This is
+authentication of *callers*, not of users: there are no identities, and it does not
+enforce the policies the Policy Manager stores.
+
 ## API (v1)
 
 | Method & path | What it does |
@@ -166,7 +189,7 @@ Errors use a uniform `ApiError` body (`status`, `error`, `message`, `path`, `tim
 ## What's left (post-MVP)
 
 Registry, Catalog, Policy and Deployment are functional and persistent. In rough order:
-verifying the `postgres` profile against Cave's real services end-to-end, digital
+per-user identity (OIDC) on top of the shared tokens, verifying the `postgres` profile against Cave's real services end-to-end, digital
 signing of bundles, policy enforcement at the actual enforcement points (Runtime/Gateway),
 real rollout orchestration (rolling/canary) in the Deployment Manager, and health/SLA
 tracking in the Catalog.
